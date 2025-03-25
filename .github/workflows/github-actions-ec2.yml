@@ -1,11 +1,11 @@
-name: Push-to-EC2
+name: Comprehensive Web Deployment
 on:
   push:
     branches:
       - main
 jobs:
   deploy:
-    name: Deploy to EC2 on master branch push
+    name: Full Web Deployment Diagnostics
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the files
@@ -26,16 +26,43 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Red Hat / CentOS specific commands
+            # Comprehensive Web Server Setup
             sudo dnf update -y
+            
+            # Install and configure web server
             sudo dnf install -y httpd
-            sudo systemctl start httpd
-            sudo systemctl enable httpd
+            
+            # Ensure web directory exists
+            sudo mkdir -p /var/www/html
             
             # Move files to web directory
-            cd /home/${{ secrets.USERNAME }}
-            sudo mv * /var/www/html/
+            sudo cp -R /home/${{ secrets.USERNAME }}/* /var/www/html/
             
-            # Set proper SELinux context and permissions
-            sudo restorecon -R /var/www/html
+            # Set correct permissions
+            sudo chown -R apache:apache /var/www/html
             sudo chmod -R 755 /var/www/html
+            
+            # Configure firewall
+            sudo firewall-cmd --permanent --add-service=http
+            sudo firewall-cmd --permanent --add-service=https
+            sudo firewall-cmd --reload
+            
+            # SELinux configurations
+            sudo restorecon -R /var/www/html
+            
+            # Restart web server
+            sudo systemctl restart httpd
+            sudo systemctl enable httpd
+            
+            # Diagnostic information
+            echo "Web Server Status:"
+            sudo systemctl status httpd
+            
+            echo "Directory Contents:"
+            ls -la /var/www/html
+            
+            echo "Firewall Rules:"
+            sudo firewall-cmd --list-all
+            
+            echo "SELinux Status:"
+            getenforce

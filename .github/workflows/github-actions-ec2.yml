@@ -14,6 +14,13 @@ jobs:
     steps:
       - name: Checkout the files
         uses: actions/checkout@v4
+      
+      - name: Debug Secrets
+        run: |
+          echo "Checking if secrets exist..."
+          [[ -n "${{ secrets.HOST_DNS }}" ]] && echo "HOST_DNS is set" || echo "HOST_DNS is missing"
+          [[ -n "${{ secrets.USERNAME }}" ]] && echo "USERNAME is set" || echo "USERNAME is missing"
+          [[ -n "${{ secrets.EC2_SSH_KEY }}" ]] && echo "EC2_SSH_KEY is set" || echo "EC2_SSH_KEY is missing"
 
       - name: Deploy to Server
         uses: easingthemes/ssh-deploy@main

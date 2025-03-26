@@ -3,69 +3,142 @@ on:
   push:
     branches:
       - main
+
 jobs:
   deploy:
     name: Full Web Deployment Diagnostics
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the files
-        uses: actions/checkout@v2
-      
-      - name: Deploy to Server
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.HOST_DNS }}
-          REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: /var/www/html # Deploy directly to the web root
-      
-      - name: Executing remote ssh commands
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Validate SSH Connection
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST_DNS }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Update all packages
-            sudo dnf update -y
-
-            # Install Apache if not already installed
-            sudo dnf install -y httpd
-
-            # Ensure the web directory exists
+            # Pre-flight checks
+            echo "Performing pre-deployment checks..."
+            
+            # Check disk space
+            df -h
+            
+            # Verify user permissions
+            whoami
+            id
+      
+      - name: Prepare Target Directory
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_DNS }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Robust directory preparation
+            set -e  # Exit immediately if a command exits with a non-zero status
+            
+            # Create directories with explicit permissions
             sudo mkdir -p /var/www/html
-
+            
+            # Set ownership and permissions
+            sudo chown -R ${{ secrets.USERNAME }}:apache /var/www/html
+            sudo chmod -R 755 /var/www/html
+            
+            # Verify directory setup
+            ls -ld /var/www/html
+            
+            # Log directory preparation
+            echo "Target directory prepared successfully"
+      
+      - name: Deploy Web Files
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.HOST_DNS }}
+          REMOTE_USER: ${{ secrets.USERNAME }}
+          TARGET: /var/www/html
+          EXCLUDE: |
+            .git
+            .github
+            .gitignore
+            README.md
+      
+      - name: Configure Web Server and Security
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_DNS }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Comprehensive server configuration
+            set -e
+            
+            # Update system packages
+            sudo yum update -y
+            
+            # Install and configure web server
+            sudo yum install -y httpd mod_ssl
+            
             # Set correct permissions
             sudo chown -R apache:apache /var/www/html
-            sudo chmod -R 755 /var/www/html
-
-            # Ensure FirewallD is installed and running
-            sudo dnf install -y firewalld
+            sudo chmod -R 750 /var/www/html  # More restrictive permission
+            
+            # Configure firewall
             sudo systemctl start firewalld
             sudo systemctl enable firewalld
-
-            # Open necessary ports
+            
+            # Open necessary ports with permanent configuration
             sudo firewall-cmd --permanent --add-service=http
             sudo firewall-cmd --permanent --add-service=https
             sudo firewall-cmd --permanent --add-port=443/tcp
             sudo firewall-cmd --reload
-
-            # Ensure Apache starts on boot
-            sudo systemctl enable --now httpd
-
-            # SELinux adjustments (optional but recommended)
-            sudo restorecon -R /var/www/html
+            
+            # Configure SELinux
             sudo setsebool -P httpd_can_network_connect on
-
-            # Display diagnostic information
-            echo "=== Web Server Status ==="
+            sudo restorecon -R /var/www/html
+            
+            # Start and enable Apache
+            sudo systemctl restart httpd
+            sudo systemctl enable httpd
+            
+            # Detailed diagnostics
+            echo "=== System Deployment Report ==="
+            echo "Date: $(date)"
+            echo ""
+            echo "--- Web Server Status ---"
             sudo systemctl status httpd || true
             
-            echo "=== Firewall Status ==="
-            sudo systemctl status firewalld || true
-            
-            echo "=== Firewall Rules ==="
+            echo ""
+            echo "--- Firewall Configuration ---"
             sudo firewall-cmd --list-all || true
             
-            echo "=== SELinux Status ==="
+            echo ""
+            echo "--- SELinux Status ---"
             getenforce
+            
+            echo ""
+            echo "--- Directory Permissions ---"
+            ls -ld /var/www/html
+            ls -l /var/www/html
+      
+      - name: Verify Deployment
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_DNS }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Comprehensive deployment verification
+            
+            # Check web server response
+            curl -I http://localhost || echo "Web server not responding"
+            
+            # Verify file deployment
+            if [ "$(ls -A /var/www/html)" ]; then
+                echo "Files successfully deployed"
+            else
+                echo "ERROR: No files found in deployment directory"
+                exit 1
+            fi

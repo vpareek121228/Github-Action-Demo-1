@@ -11,4 +11,4 @@ jobs:
     steps:
       - name: Get current server time
         shell: bash
-        run: echo "Current Time: $(date)"
+        run: echo "Current Time:"

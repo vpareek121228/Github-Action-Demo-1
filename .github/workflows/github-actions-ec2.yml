@@ -42,11 +42,18 @@ jobs:
             # Create directories with explicit permissions
             sudo mkdir -p /var/www/html
             
+            # Determine the correct web server group
+            WEB_GROUP=$(grep -E '^apache:|^www-data:' /etc/group | cut -d: -f1)
+            
+            # If no web group found, default to current user's group
+            WEB_GROUP=${WEB_GROUP:-${{ secrets.USERNAME }}}
+            
             # Set ownership and permissions
-            sudo chown -R ${{ secrets.USERNAME }}:apache /var/www/html
+            sudo chown -R ${{ secrets.USERNAME }}:$WEB_GROUP /var/www/html
             sudo chmod -R 755 /var/www/html
             
             # Verify directory setup
+            echo "Web Group: $WEB_GROUP"
             ls -ld /var/www/html
             
             # Log directory preparation
@@ -75,6 +82,12 @@ jobs:
             # Comprehensive server configuration
             set -e
             
+            # Determine the correct web server group
+            WEB_GROUP=$(grep -E '^apache:|^www-data:' /etc/group | cut -d: -f1)
+            
+            # If no web group found, default to current user's group
+            WEB_GROUP=${WEB_GROUP:-${{ secrets.USERNAME }}}
+            
             # Update system packages
             sudo yum update -y
             
@@ -82,7 +95,7 @@ jobs:
             sudo yum install -y httpd mod_ssl
             
             # Set correct permissions
-            sudo chown -R apache:apache /var/www/html
+            sudo chown -R apache:$WEB_GROUP /var/www/html
             sudo chmod -R 750 /var/www/html  # More restrictive permission
             
             # Configure firewall

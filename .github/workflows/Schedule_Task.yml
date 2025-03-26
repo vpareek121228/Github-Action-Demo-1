@@ -2,7 +2,7 @@ name: Scheduled Time Logger
 
 on:
   schedule:
-    - cron: "*/1 * * * *"  # Runs every 1 minute (GitHub Actions minimum)
+    - cron: "*/1 * * * *"  # Runs every 1 minute
   workflow_dispatch:  # Allows manual trigger
 
 jobs:
@@ -10,4 +10,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Get current server time
+        shell: bash
         run: echo "Current Time: $(date)"

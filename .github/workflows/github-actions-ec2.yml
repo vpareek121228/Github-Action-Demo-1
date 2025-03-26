@@ -22,23 +22,21 @@ jobs:
             # Robust directory preparation
             set -e
             
-            # Ensure user is in apache group
-            sudo usermod -a -G apache ${{ secrets.USERNAME }}
-            
             # Create directories with explicit permissions
             sudo mkdir -p /var/www/html
             
-            # Set ownership and permissions
+            # Set ownership to apache user
             sudo chown -R apache:apache /var/www/html
-            sudo chmod -R 775 /var/www/html  # More permissive group access
             
-            # Add current user to apache group
-            echo "Current user groups:"
-            groups
+            # Disable SELinux temporarily during deployment
+            sudo setenforce 0
+            
+            # Ensure permissions are correct
+            sudo chmod -R 755 /var/www/html
             
             # Verify directory setup
+            echo "Directory permissions before deployment:"
             ls -ld /var/www/html
-            ls -l /var/www/html
       
       - name: Deploy Web Files
         uses: easingthemes/ssh-deploy@main
@@ -47,6 +45,11 @@ jobs:
           REMOTE_HOST: ${{ secrets.HOST_DNS }}
           REMOTE_USER: ${{ secrets.USERNAME }}
           TARGET: /var/www/html
+          ARGS: >
+            -rlgoDzvc 
+            --no-o 
+            --no-g 
+            --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
           EXCLUDE: |
             .git
             .github
@@ -66,31 +69,32 @@ jobs:
             # Update system packages
             sudo yum update -y
             
-            # Install and configure web server and firewall
+            # Install web server and firewall
             sudo yum install -y httpd mod_ssl firewalld
             
-            # Ensure current user is in apache group
-            sudo usermod -a -G apache ${{ secrets.USERNAME }}
+            # Restore SELinux context
+            sudo restorecon -R /var/www/html
             
-            # Set correct permissions with group write access
+            # Set correct ownership
             sudo chown -R apache:apache /var/www/html
-            sudo chmod -R 775 /var/www/html  # Allows group write
             
-            # Configure firewall (with error handling)
+            # Ensure SELinux allows web server access
+            sudo setsebool -P httpd_can_network_connect on
+            
+            # Restore SELinux to enforcing mode
+            sudo setenforce 1
+            
+            # Configure firewall
             sudo systemctl enable firewalld || true
             sudo systemctl start firewalld || true
             
-            # Attempt to configure firewall rules
+            # Open web server ports
             sudo firewall-cmd --permanent --add-service=http || true
             sudo firewall-cmd --permanent --add-service=https || true
             sudo firewall-cmd --permanent --add-port=443/tcp || true
             sudo firewall-cmd --reload || true
             
-            # Configure SELinux
-            sudo setsebool -P httpd_can_network_connect on
-            sudo restorecon -R /var/www/html
-            
-            # Start and enable Apache
+            # Restart web server
             sudo systemctl restart httpd
             sudo systemctl enable httpd
             
@@ -99,8 +103,8 @@ jobs:
             echo "Date: $(date)"
             
             echo ""
-            echo "--- Current User Groups ---"
-            groups
+            echo "--- SELinux Status ---"
+            getenforce
             
             echo ""
             echo "--- Directory Permissions ---"
@@ -118,13 +122,8 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Comprehensive deployment verification
-            
-            # Verify directory access
-            echo "Checking directory access:"
-            ls -l /var/www/html
-            
-            # Check web server response
+            # Verify deployment
+            echo "Checking website accessibility:"
             curl -I http://localhost || echo "Web server not responding"
             
             # Verify file deployment

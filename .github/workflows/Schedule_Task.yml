@@ -1,4 +1,4 @@
-name: Scheduled Time Logger
+name: Simple Logger
 
 on:
   schedule:
@@ -6,9 +6,8 @@ on:
   workflow_dispatch:  # Allows manual trigger
 
 jobs:
-  log-time:
+  log-message:
     runs-on: ubuntu-latest
     steps:
-      - name: Get current server time
-        run: |
-          echo "Current Time: $(date)"
+      - name: Print a message
+        run: echo "Hello, this is a scheduled job!"

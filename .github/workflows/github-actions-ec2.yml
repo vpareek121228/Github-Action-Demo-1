@@ -12,23 +12,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         
-      - name: Validate SSH Connection
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST_DNS }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # Pre-flight checks
-            echo "Performing pre-deployment checks..."
-            
-            # Check disk space
-            df -h
-            
-            # Verify user permissions
-            whoami
-            id
-      
       - name: Prepare Target Directory
         uses: appleboy/ssh-action@master
         with:
@@ -37,27 +20,25 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             # Robust directory preparation
-            set -e  # Exit immediately if a command exits with a non-zero status
+            set -e
+            
+            # Ensure user is in apache group
+            sudo usermod -a -G apache ${{ secrets.USERNAME }}
             
             # Create directories with explicit permissions
             sudo mkdir -p /var/www/html
             
-            # Determine the correct web server group
-            WEB_GROUP=$(grep -E '^apache:|^www-data:' /etc/group | cut -d: -f1)
-            
-            # If no web group found, default to current user's group
-            WEB_GROUP=${WEB_GROUP:-${{ secrets.USERNAME }}}
-            
             # Set ownership and permissions
-            sudo chown -R ${{ secrets.USERNAME }}:$WEB_GROUP /var/www/html
-            sudo chmod -R 755 /var/www/html
+            sudo chown -R apache:apache /var/www/html
+            sudo chmod -R 775 /var/www/html  # More permissive group access
+            
+            # Add current user to apache group
+            echo "Current user groups:"
+            groups
             
             # Verify directory setup
-            echo "Web Group: $WEB_GROUP"
             ls -ld /var/www/html
-            
-            # Log directory preparation
-            echo "Target directory prepared successfully"
+            ls -l /var/www/html
       
       - name: Deploy Web Files
         uses: easingthemes/ssh-deploy@main
@@ -82,27 +63,18 @@ jobs:
             # Comprehensive server configuration
             set -e
             
-            # Determine the correct web server group
-            WEB_GROUP=$(grep -E '^apache:|^www-data:' /etc/group | cut -d: -f1)
-            
-            # If no web group found, default to current user's group
-            WEB_GROUP=${WEB_GROUP:-${{ secrets.USERNAME }}}
-            
             # Update system packages
             sudo yum update -y
             
             # Install and configure web server and firewall
             sudo yum install -y httpd mod_ssl firewalld
             
-            # Ensure firewalld is installed and running
-            if ! rpm -q firewalld > /dev/null; then
-                echo "Failed to install firewalld"
-                exit 1
-            fi
+            # Ensure current user is in apache group
+            sudo usermod -a -G apache ${{ secrets.USERNAME }}
             
-            # Set correct permissions
-            sudo chown -R apache:$WEB_GROUP /var/www/html
-            sudo chmod -R 750 /var/www/html  # More restrictive permission
+            # Set correct permissions with group write access
+            sudo chown -R apache:apache /var/www/html
+            sudo chmod -R 775 /var/www/html  # Allows group write
             
             # Configure firewall (with error handling)
             sudo systemctl enable firewalld || true
@@ -125,26 +97,19 @@ jobs:
             # Detailed diagnostics
             echo "=== System Deployment Report ==="
             echo "Date: $(date)"
-            echo ""
-            echo "--- Installed Packages ---"
-            rpm -qa | grep -E 'httpd|firewalld|mod_ssl'
             
             echo ""
-            echo "--- Web Server Status ---"
-            sudo systemctl status httpd || true
-            
-            echo ""
-            echo "--- Firewall Configuration ---"
-            sudo firewall-cmd --list-all || true
-            
-            echo ""
-            echo "--- SELinux Status ---"
-            getenforce
+            echo "--- Current User Groups ---"
+            groups
             
             echo ""
             echo "--- Directory Permissions ---"
             ls -ld /var/www/html
             ls -l /var/www/html
+            
+            echo ""
+            echo "--- Web Server Status ---"
+            sudo systemctl status httpd || true
       
       - name: Verify Deployment
         uses: appleboy/ssh-action@master
@@ -154,6 +119,10 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             # Comprehensive deployment verification
+            
+            # Verify directory access
+            echo "Checking directory access:"
+            ls -l /var/www/html
             
             # Check web server response
             curl -I http://localhost || echo "Web server not responding"

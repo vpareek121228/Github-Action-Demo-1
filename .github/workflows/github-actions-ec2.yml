@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        
+      
       - name: Prepare Target Directory
         uses: appleboy/ssh-action@master
         with:
@@ -19,22 +19,10 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Robust directory preparation
             set -e
-            
-            # Create directories with explicit permissions
             sudo mkdir -p /var/www/html
-            
-            # Set ownership to apache user
-            sudo chown -R apache:apache /var/www/html
-            
-            # Disable SELinux temporarily during deployment
-            sudo setenforce 0
-            
-            # Ensure permissions are correct
+            sudo chown -R $USER:$USER /var/www/html
             sudo chmod -R 755 /var/www/html
-            
-            # Verify directory setup
             echo "Directory permissions before deployment:"
             ls -ld /var/www/html
       
@@ -63,55 +51,27 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Comprehensive server configuration
             set -e
-            
-            # Update system packages
             sudo yum update -y
-            
-            # Install web server and firewall
             sudo yum install -y httpd mod_ssl firewalld
-            
-            # Restore SELinux context
-            sudo restorecon -R /var/www/html
-            
-            # Set correct ownership
             sudo chown -R apache:apache /var/www/html
-            
-            # Ensure SELinux allows web server access
+            sudo restorecon -R /var/www/html
             sudo setsebool -P httpd_can_network_connect on
-            
-            # Restore SELinux to enforcing mode
-            sudo setenforce 1
-            
-            # Configure firewall
             sudo systemctl enable firewalld || true
             sudo systemctl start firewalld || true
-            
-            # Open web server ports
             sudo firewall-cmd --permanent --add-service=http || true
             sudo firewall-cmd --permanent --add-service=https || true
             sudo firewall-cmd --permanent --add-port=443/tcp || true
             sudo firewall-cmd --reload || true
-            
-            # Restart web server
             sudo systemctl restart httpd
             sudo systemctl enable httpd
-            
-            # Detailed diagnostics
             echo "=== System Deployment Report ==="
             echo "Date: $(date)"
-            
-            echo ""
             echo "--- SELinux Status ---"
             getenforce
-            
-            echo ""
             echo "--- Directory Permissions ---"
             ls -ld /var/www/html
             ls -l /var/www/html
-            
-            echo ""
             echo "--- Web Server Status ---"
             sudo systemctl status httpd || true
       
@@ -122,11 +82,8 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Verify deployment
             echo "Checking website accessibility:"
             curl -I http://localhost || echo "Web server not responding"
-            
-            # Verify file deployment
             if [ "$(ls -A /var/www/html)" ]; then
                 echo "Files successfully deployed"
             else

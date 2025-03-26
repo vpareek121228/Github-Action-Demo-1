@@ -17,7 +17,7 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
           REMOTE_HOST: ${{ secrets.HOST_DNS }}
           REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: ${{ secrets.TARGET_DIR }}
+          TARGET: /var/www/html # Deploy directly to the web root
       
       - name: Executing remote ssh commands
         uses: appleboy/ssh-action@master
@@ -26,43 +26,46 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Comprehensive Web Server Setup
+            # Update all packages
             sudo dnf update -y
-            
-            # Install and configure web server
+
+            # Install Apache if not already installed
             sudo dnf install -y httpd
-            
-            # Ensure web directory exists
+
+            # Ensure the web directory exists
             sudo mkdir -p /var/www/html
-            
-            # Move files to web directory
-            sudo cp -R /home/${{ secrets.USERNAME }}/* /var/www/html/
-            
+
             # Set correct permissions
             sudo chown -R apache:apache /var/www/html
             sudo chmod -R 755 /var/www/html
-            
-            # Configure firewall
+
+            # Ensure FirewallD is installed and running
+            sudo dnf install -y firewalld
+            sudo systemctl start firewalld
+            sudo systemctl enable firewalld
+
+            # Open necessary ports
             sudo firewall-cmd --permanent --add-service=http
             sudo firewall-cmd --permanent --add-service=https
+            sudo firewall-cmd --permanent --add-port=443/tcp
             sudo firewall-cmd --reload
-            
-            # SELinux configurations
+
+            # Ensure Apache starts on boot
+            sudo systemctl enable --now httpd
+
+            # SELinux adjustments (optional but recommended)
             sudo restorecon -R /var/www/html
+            sudo setsebool -P httpd_can_network_connect on
+
+            # Display diagnostic information
+            echo "=== Web Server Status ==="
+            sudo systemctl status httpd || true
             
-            # Restart web server
-            sudo systemctl restart httpd
-            sudo systemctl enable httpd
+            echo "=== Firewall Status ==="
+            sudo systemctl status firewalld || true
             
-            # Diagnostic information
-            echo "Web Server Status:"
-            sudo systemctl status httpd
+            echo "=== Firewall Rules ==="
+            sudo firewall-cmd --list-all || true
             
-            echo "Directory Contents:"
-            ls -la /var/www/html
-            
-            echo "Firewall Rules:"
-            sudo firewall-cmd --list-all
-            
-            echo "SELinux Status:"
+            echo "=== SELinux Status ==="
             getenforce

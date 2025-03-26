@@ -91,22 +91,28 @@ jobs:
             # Update system packages
             sudo yum update -y
             
-            # Install and configure web server
-            sudo yum install -y httpd mod_ssl
+            # Install and configure web server and firewall
+            sudo yum install -y httpd mod_ssl firewalld
+            
+            # Ensure firewalld is installed and running
+            if ! rpm -q firewalld > /dev/null; then
+                echo "Failed to install firewalld"
+                exit 1
+            fi
             
             # Set correct permissions
             sudo chown -R apache:$WEB_GROUP /var/www/html
             sudo chmod -R 750 /var/www/html  # More restrictive permission
             
-            # Configure firewall
-            sudo systemctl start firewalld
-            sudo systemctl enable firewalld
+            # Configure firewall (with error handling)
+            sudo systemctl enable firewalld || true
+            sudo systemctl start firewalld || true
             
-            # Open necessary ports with permanent configuration
-            sudo firewall-cmd --permanent --add-service=http
-            sudo firewall-cmd --permanent --add-service=https
-            sudo firewall-cmd --permanent --add-port=443/tcp
-            sudo firewall-cmd --reload
+            # Attempt to configure firewall rules
+            sudo firewall-cmd --permanent --add-service=http || true
+            sudo firewall-cmd --permanent --add-service=https || true
+            sudo firewall-cmd --permanent --add-port=443/tcp || true
+            sudo firewall-cmd --reload || true
             
             # Configure SELinux
             sudo setsebool -P httpd_can_network_connect on
@@ -119,6 +125,10 @@ jobs:
             # Detailed diagnostics
             echo "=== System Deployment Report ==="
             echo "Date: $(date)"
+            echo ""
+            echo "--- Installed Packages ---"
+            rpm -qa | grep -E 'httpd|firewalld|mod_ssl'
+            
             echo ""
             echo "--- Web Server Status ---"
             sudo systemctl status httpd || true

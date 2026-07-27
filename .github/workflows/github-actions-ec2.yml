@@ -1,93 +1,39 @@
-name: Comprehensive Web Deployment
+name: Deploy Website to EC2
+
 on:
-  # push:
-  #   branches:
-  #     - main
-  workflow_dispatch:  # Allows manual execution
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
-    name: Full Web Deployment Diagnostics
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-      
-      - name: Prepare Target Directory
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST_DNS }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e
-            sudo mkdir -p /var/www/html
-            sudo chown -R $USER:$USER /var/www/html
-            sudo chmod -R 755 /var/www/html
-            echo "Directory permissions before deployment:"
-            ls -ld /var/www/html
-      
-      - name: Deploy Web Files
+
+      - name: Deploy Files to EC2
         uses: easingthemes/ssh-deploy@main
         env:
           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
           REMOTE_HOST: ${{ secrets.HOST_DNS }}
           REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: /var/www/html
-          ARGS: >
-            -rlgoDzvc 
-            --no-o 
-            --no-g 
-            --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
+          TARGET: /usr/share/nginx/html
+          ARGS: -rlgoDzvc --no-o --no-g
           EXCLUDE: |
             .git
             .github
             .gitignore
             README.md
-      
-      - name: Configure Web Server and Security
+
+      - name: Restart Nginx
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST_DNS }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -e
-            sudo yum update -y
-            sudo yum install -y httpd mod_ssl firewalld
-            sudo chown -R apache:apache /var/www/html
-            sudo restorecon -R /var/www/html
-            sudo setsebool -P httpd_can_network_connect on
-            sudo systemctl enable firewalld || true
-            sudo systemctl start firewalld || true
-            sudo firewall-cmd --permanent --add-service=http || true
-            sudo firewall-cmd --permanent --add-service=https || true
-            sudo firewall-cmd --permanent --add-port=443/tcp || true
-            sudo firewall-cmd --reload || true
-            sudo systemctl restart httpd
-            sudo systemctl enable httpd
-            echo "=== System Deployment Report ==="
-            echo "Date: $(date)"
-            echo "--- SELinux Status ---"
-            getenforce
-            echo "--- Directory Permissions ---"
-            ls -ld /var/www/html
-            ls -l /var/www/html
-            echo "--- Web Server Status ---"
-            sudo systemctl status httpd || true
-      
-      - name: Verify Deployment
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST_DNS }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            echo "Checking website accessibility:"
-            curl -I http://localhost || echo "Web server not responding"
-            if [ "$(ls -A /var/www/html)" ]; then
-                echo "Files successfully deployed"
-            else
-                echo "ERROR: No files found in deployment directory"
-                exit 1
-            fi
+            sudo chown -R nginx:nginx /usr/share/nginx/html
+            sudo systemctl restart nginx
+            echo "Deployed! Visit http://${{ secrets.HOST_DNS }}"

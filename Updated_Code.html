@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kyndryl Cloud Demo</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #ff0000, #1a1a1a);
+            color: white;
+            text-align: center;
+        }
+        .container {
+            background: rgba(0, 0, 0, 0.55);
+            padding: 40px 60px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        .brand {
+            font-size: 1rem;
+            letter-spacing: 3px;
+            color: #ff4d4d;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        h1 {
+            font-size: 2.2rem;
+            margin: 10px 0;
+        }
+        .badge {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 4px 14px;
+            background: #22c55e;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        .clocks {
+            display: flex;
+            gap: 40px;
+            margin-top: 25px;
+        }
+        .clock-box {
+            flex: 1;
+        }
+        .clock-box h3 {
+            margin: 0 0 8px 0;
+            font-size: 1rem;
+            color: #ffd6d6;
+        }
+        .clock-box p {
+            font-size: 1.2rem;
+            margin: 0;
+        }
+        .status {
+            margin-top: 25px;
+            padding: 10px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            font-size: 0.85rem;
+            color: #9be89b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="brand">Kyndryl Cloud Automation</div>
+        <h1>Global Time Dashboard</h1>
+        <span class="badge">✅ NEW FEATURE DEPLOYED - BUILD v2</span>
+
+        <div class="clocks">
+            <div class="clock-box">
+                <h3>🇮🇳 India (IST)</h3>
+                <p id="india-time">Loading...</p>
+            </div>
+            <div class="clock-box">
+                <h3>🇯🇵 Japan (JST)</h3>
+                <p id="japan-time">Loading...</p>
+            </div>
+        </div>
+
+        <div class="status">Deployed via GitHub Actions CI/CD — zero downtime</div>
+    </div>
+
+    <script>
+        function updateDateTime() {
+            const baseOptions = {
+                hour12: true, weekday: "short", year: "numeric", month: "short",
+                day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit"
+            };
+            document.getElementById("india-time").textContent =
+                new Date().toLocaleString("en-IN", { ...baseOptions, timeZone: "Asia/Kolkata" });
+            document.getElementById("japan-time").textContent =
+                new Date().toLocaleString("en-US", { ...baseOptions, timeZone: "Asia/Tokyo" });
+        }
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+    </script>
+</body>
+</html>

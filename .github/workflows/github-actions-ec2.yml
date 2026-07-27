@@ -14,18 +14,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy Files to EC2
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.HOST_DNS }}
-          REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: /usr/share/nginx/html
-          ARGS: -rlgoDzvc --no-o --no-g
-          EXCLUDE: |
-            .git
-            .github
-            .gitignore
-            README.md
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST_DNS }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "index.html,style.css"
+          target: "/usr/share/nginx/html"
+          overwrite: true
 
       - name: Restart Nginx
         uses: appleboy/ssh-action@master
@@ -33,7 +29,4 @@ jobs:
           host: ${{ secrets.HOST_DNS }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            sudo chown -R nginx:nginx /usr/share/nginx/html
-            sudo systemctl restart nginx
-            echo "Deployed! Visit http://${{ secrets.HOST_DNS }}"
+          script: sudo systemctl restart nginx

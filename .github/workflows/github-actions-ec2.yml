@@ -19,7 +19,7 @@ jobs:
           host: ${{ secrets.HOST_DNS }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "Index.html,style.css"
+          source: "index.html,style.css"
           target: "/usr/share/nginx/html"
           overwrite: true
 

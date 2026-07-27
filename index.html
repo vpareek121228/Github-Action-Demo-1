@@ -37,67 +37,34 @@
             display: inline-block;
             margin-top: 15px;
             padding: 4px 14px;
-            background: #22c55e;
+            background: #ff0000;
             border-radius: 20px;
             font-size: 0.85rem;
             font-weight: bold;
         }
-        .clocks {
-            display: flex;
-            gap: 40px;
-            margin-top: 25px;
-        }
-        .clock-box {
-            flex: 1;
-        }
-        .clock-box h3 {
-            margin: 0 0 8px 0;
-            font-size: 1rem;
-            color: #ffd6d6;
-        }
-        .clock-box p {
-            font-size: 1.2rem;
-            margin: 0;
-        }
-        .status {
-            margin-top: 25px;
-            padding: 10px;
-            border-top: 1px solid rgba(255,255,255,0.2);
-            font-size: 0.85rem;
-            color: #9be89b;
+        #datetime {
+            font-size: 1.5rem;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="brand">Kyndryl Cloud Automation</div>
-        <h1>Global Time Dashboard</h1>
-        <span class="badge">✅ NEW FEATURE DEPLOYED - BUILD v2</span>
-
-        <div class="clocks">
-            <div class="clock-box">
-                <h3>🇮🇳 India (IST)</h3>
-                <p id="india-time">Loading...</p>
-            </div>
-            <div class="clock-box">
-                <h3>🇯🇵 Japan (JST)</h3>
-                <p id="japan-time">Loading...</p>
-            </div>
-        </div>
-
-        <div class="status">Deployed via GitHub Actions CI/CD — zero downtime</div>
+        <h1>India Time Dashboard</h1>
+        <span class="badge">BUILD v1</span>
+        <p id="datetime">Loading...</p>
     </div>
 
     <script>
         function updateDateTime() {
-            const baseOptions = {
-                hour12: true, weekday: "short", year: "numeric", month: "short",
-                day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit"
+            const options = {
+                timeZone: "Asia/Kolkata", hour12: true,
+                weekday: "long", year: "numeric", month: "long", day: "numeric",
+                hour: "2-digit", minute: "2-digit", second: "2-digit"
             };
-            document.getElementById("india-time").textContent =
-                new Date().toLocaleString("en-IN", { ...baseOptions, timeZone: "Asia/Kolkata" });
-            document.getElementById("japan-time").textContent =
-                new Date().toLocaleString("en-US", { ...baseOptions, timeZone: "Asia/Tokyo" });
+            document.getElementById("datetime").textContent =
+                new Date().toLocaleString("en-IN", options);
         }
         setInterval(updateDateTime, 1000);
         updateDateTime();

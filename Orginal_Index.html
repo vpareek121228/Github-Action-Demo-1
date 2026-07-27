@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kyndryl Cloud Demo</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #ff0000, #1a1a1a);
+            color: white;
+            text-align: center;
+        }
+        .container {
+            background: rgba(0, 0, 0, 0.55);
+            padding: 40px 60px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        .brand {
+            font-size: 1rem;
+            letter-spacing: 3px;
+            color: #ff4d4d;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        h1 {
+            font-size: 2.2rem;
+            margin: 10px 0;
+        }
+        .badge {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 4px 14px;
+            background: #ff0000;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        #datetime {
+            font-size: 1.5rem;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="brand">Kyndryl Cloud Automation</div>
+        <h1>India Time Dashboard</h1>
+        <span class="badge">BUILD v1</span>
+        <p id="datetime">Loading...</p>
+    </div>
+
+    <script>
+        function updateDateTime() {
+            const options = {
+                timeZone: "Asia/Kolkata", hour12: true,
+                weekday: "long", year: "numeric", month: "long", day: "numeric",
+                hour: "2-digit", minute: "2-digit", second: "2-digit"
+            };
+            document.getElementById("datetime").textContent =
+                new Date().toLocaleString("en-IN", options);
+        }
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+    </script>
+</body>
+</html>
